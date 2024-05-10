@@ -1,0 +1,48 @@
+import { HashType } from "@ckb-lumos/lumos"
+import { BitcoinConfig } from "./bitcoin.config"
+import { NervosConfig } from "./nervos.config"
+
+interface Config {
+  bitcoin: BitcoinConfig
+  nervos: NervosConfig
+}
+
+export default (): Config => {
+  let hashType: HashType = 'type'
+  switch (process.env.NERVOS_RGBPP_HASH_TYPE) {
+    case 'type':
+      hashType = 'type'
+      break
+    case 'data':
+      hashType = 'data'
+      break
+    case 'data1':
+      hashType = 'data1'
+      break
+    default:
+      hashType = 'type'
+  }
+
+  return {
+    bitcoin: {
+      startBlockNUmber: parseInt(process.env.BITCOIN_START_BLOCK_NUMBER, 10) || 0,
+      rpc: {
+        url: process.env.BITCOIN_RPC_URL || 'http://localhost',
+        user: process.env.BITCOIN_RPC_USER,
+        pass: process.env.BITCOIN_RPC_PASS,
+        port: parseInt(process.env.BITCOIN_RPC_PORT, 10) || 8332,
+        timeout: parseInt(process.env.BITCOIN_RPC_TIMEOUT, 10) || 30000,
+      }
+    },
+    nervos: {
+      rgbpp: {
+        codeHash: process.env.NERVOS_RGBPP_CODE_HASH || '0x61ca7a4796a4eb19ca4f0d065cb9b10ddcf002f10f7cbb810c706cb6bb5c3248',
+        hashType,
+      },
+      rpc: {
+        url: process.env.NERVOS_RPC_URL || 'http://localhost',
+        timeout: parseInt(process.env.NERVOS_RPC_TIMEOUT, 10) || 30000,
+      }
+    }
+  }
+}
