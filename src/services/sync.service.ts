@@ -40,6 +40,7 @@ export class SyncService {
       }, new Map<HexString, ConsumedBitcoinOutput>
       )
       const filtered = await this._explorerService.filterUnbindCell(unbindTransaction)
+      console.log(filtered)
       for (const record of filtered) {
         await this._explorerService.reportUnbind(record)
       }
