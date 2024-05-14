@@ -48,7 +48,7 @@ export class ExplorerService {
   filterUnbindCell = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
     const filtered: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[] = []
 
-    let page = 1000
+    let page = 1
     while (true) {
       const cells = await this.getLiveCells(page, 100, this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
       if (cells.length === 0) {
