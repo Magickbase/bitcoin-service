@@ -2,43 +2,100 @@ import { ConfigService } from "@nestjs/config"
 import { ProxyAgent, fetch } from 'undici'
 import { NervosService } from "./nervos.service"
 import { Injectable } from "@nestjs/common"
-import { Cell, HexString, OutPoint, Transaction } from "@ckb-lumos/lumos"
+import { Cell, HashType, HexString, OutPoint } from "@ckb-lumos/lumos"
+import { ConsumedBitcoinOutput } from "src/type"
+import { RGBPPConfig } from "src/config/nervos.config"
 
 @Injectable()
 export class ExplorerService {
-  #host: string = 'https://mainnet-api.explorer.nervos.org'
-  constructor(private readonly _configService: ConfigService, private readonly _nervosService: NervosService) { }
+  #host: string;
+  #rgbppConfig: RGBPPConfig
 
-  getAllRGBCell = async (): Promise<Map<HexString, { cell: Cell, outpoint: OutPoint }>> => {
-    let page = 0
-    const cells = []
-    while (true) {
-      const url = `${this.#host}/api/v2/scripts/referring_cells?code_hash=0xbc6c568a1a0d0a09f6844dc9d74ddb4343c32143ff25f727c59edf4fb72d6936&hash_type=type&page=${page}&page_size=10000`
-      try {
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: {
-            Accept: 'application/vnd.api+json',
-            'Content-Type': 'application/vnd.api+json',
-          },
-        })
-        const data = await res.json() as any
-        if (data.data.referring_cells.length === 0) {
-          break
-        }
+  constructor(private readonly _configService: ConfigService, private readonly _nervosService: NervosService) {
+    this.#host = this._configService.get('nervos.explorerUrl')
+    this.#rgbppConfig = this._configService.get('nervos.rgbpp')
+  }
 
-        cells.push(...data.data.referring_cells)
-        page++
-      } catch (e) {
-        console.log(e)
-      }
-    }
+  getLiveCells = async (page: number, pageSize: number, codeHash: HexString, hashType: HashType): Promise<Cell[]> => {
+    const url = `${this.#host}/api/v2/scripts/referring_cells?code_hash=${codeHash}&hash_type=${hashType}&page=${page}&page_size=${pageSize}`
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.api+json',
+        'Content-Type': 'application/vnd.api+json',
+      },
+    })
+
+    const data = await res.json() as any
+    const cells = data.data.referring_cells as Array<any>
     const transactions = await this._nervosService.getMappedMultipleTransaction(cells.map(cell => cell.tx_hash))
 
-    return cells.reduce((acc, cell) => {
+    return cells.map(cell => {
       const transaction = transactions.get(cell.tx_hash)
-      const args = transaction.outputs[cell.cell_index].lock.args
-      return acc.set(args, { cell: transaction.outputs[cell.cell_index], outpoint: { txHash: cell.tx_hash, index: cell.cell_index } })
-    }, new Map<HexString, { cell: Cell, outpoint: OutPoint }>())
+
+      return {
+        cellOutput: transaction.outputs[cell.cell_index],
+        data: transactions.get(cell.tx_hash).outputsData[cell.cell_index],
+        outPoint: {
+          txHash: cell.tx_hash,
+          index: cell.cell_index,
+        }
+      }
+    })
+  }
+
+  filterUnbindCell = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
+    const filtered: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[] = []
+
+    let page = 1000
+    while (true) {
+      const cells = await this.getLiveCells(page, 100, this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
+      if (cells.length === 0) {
+        break;
+      }
+
+      cells.forEach(cell => {
+        const consumedBy = bitcoinTransactions.get(cell.cellOutput.lock.args)
+        if (consumedBy) {
+          filtered.push({ consumedBy, outpoint: cell.outPoint })
+        }
+      })
+
+      page++
+    }
+
+    return filtered
+  }
+
+  reportUnbind = async (unbind: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }) => {
+    const url = `${this.#host}/api/v2/bitcoin_vouts/verify`
+
+    const params = {
+      outpoint: {
+        tx_hash: unbind.outpoint.txHash,
+        index: unbind.outpoint.index,
+      },
+      consumed_by: {
+        txid: unbind.consumedBy.txid,
+        vin: {
+          txid: unbind.consumedBy.vin.txid,
+          index: unbind.consumedBy.vin.index,
+        }
+      }
+    }
+
+    try {
+      await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(params),
+        headers: {
+          Accept: 'application/vnd.api+json',
+          'Content-Type': 'application/vnd.api+json',
+        },
+      })
+    } catch (e) {
+      console.log(e)
+    }
   }
 }

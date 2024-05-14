@@ -21,6 +21,10 @@ export class NervosService {
   }
 
   getMultipleTransaction = async (txHashes: HexString[]): Promise<TransactionWithStatus[]> => {
+    if (txHashes.length === 0) {
+      return []
+    }
+
     const txes = await this.#rpc.createBatchRequest(txHashes.map(txHash => (['getTransaction', txHash]))).exec()
     return txes
   }

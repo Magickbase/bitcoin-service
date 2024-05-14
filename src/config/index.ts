@@ -3,6 +3,7 @@ import { BitcoinConfig } from "./bitcoin.config"
 import { NervosConfig } from "./nervos.config"
 
 interface Config {
+  retryTimes: number
   bitcoin: BitcoinConfig
   nervos: NervosConfig
 }
@@ -24,17 +25,19 @@ export default (): Config => {
   }
 
   return {
+    retryTimes: parseInt(process.env.RETRY_TIMES, 10) || 3,
     bitcoin: {
       startBlockNUmber: parseInt(process.env.BITCOIN_START_BLOCK_NUMBER, 10) || 0,
       rpc: {
         url: process.env.BITCOIN_RPC_URL || 'http://localhost',
         user: process.env.BITCOIN_RPC_USER,
         pass: process.env.BITCOIN_RPC_PASS,
-        port: parseInt(process.env.BITCOIN_RPC_PORT, 10) || 8332,
+        port: process.env.BITCOIN_RPC_PORT ? parseInt(process.env.BITCOIN_RPC_PORT, 10) : undefined,
         timeout: parseInt(process.env.BITCOIN_RPC_TIMEOUT, 10) || 30000,
       }
     },
     nervos: {
+      explorerUrl: process.env.NERVOS_EXPLORER_URL || 'https://mainnet-api.explorer.nervos.org',
       rgbpp: {
         codeHash: process.env.NERVOS_RGBPP_CODE_HASH || '0x61ca7a4796a4eb19ca4f0d065cb9b10ddcf002f10f7cbb810c706cb6bb5c3248',
         hashType,

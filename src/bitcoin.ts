@@ -516,7 +516,7 @@ export class RPCClient extends RESTClient {
 
   async rpc(method: string, params = {}, wallet?: string) {
     const uri = typeof wallet === 'undefined' ? '/' : 'wallet/' + wallet;
-    const body = { method, params, jsonrpc: 1.0, id: 'rpc-bitcoin' };
+    const body = { method, params };
     try {
       const response = await this.batch(body, uri);
       return this.fullResponse ? response : response.result;

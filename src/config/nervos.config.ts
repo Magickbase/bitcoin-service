@@ -1,6 +1,7 @@
 import { HashType } from "@ckb-lumos/lumos";
 
 export interface NervosConfig {
+  explorerUrl: string;
   rgbpp: RGBPPConfig;
   rpc: NervosRPCConfig;
 }

@@ -18,7 +18,6 @@ export class BitcoinService {
 
       return this.#rpc.getblock({ blockhash, verbosity: 2 })
     } catch (e) {
-      console.log(11111)
       console.error(e)
       return null
     }
@@ -26,7 +25,6 @@ export class BitcoinService {
 
   getTransactionsByBlockNumber = async (height: number): Promise<ITx[]> => {
     const block = await this.getBlockByBlockNumber(height)
-    console.log(block)
     if (!block) {
       return null
     }
