@@ -10,6 +10,7 @@ export class NervosService {
   #indexer: Indexer
   #rpc: RPC
   #rgbppConfig: RGBPPConfig
+  #retryTimes = 3
 
   constructor(private readonly _configService: ConfigService) {
     const config = this._configService.get<NervosConfig>('nervos')
@@ -25,8 +26,16 @@ export class NervosService {
       return []
     }
 
-    const txes = await this.#rpc.createBatchRequest(txHashes.map(txHash => (['getTransaction', txHash]))).exec()
-    return txes
+    let retryTimes = 0;
+    while (retryTimes < this.#retryTimes) {
+      try {
+        const txes = await this.#rpc.createBatchRequest(txHashes.map(txHash => (['getTransaction', txHash]))).exec()
+        return txes
+      } catch (e) {
+        console.log(e)
+        retryTimes++
+      }
+    }
   }
 
   getMappedMultipleTransaction = async (txHashes: HexString[]) => {
