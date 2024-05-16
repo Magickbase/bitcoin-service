@@ -86,7 +86,7 @@ export class ExplorerService {
     }
 
     try {
-      await fetch(url, {
+      const res = await fetch(url, {
         method: 'POST',
         body: JSON.stringify(params),
         headers: {
@@ -94,6 +94,8 @@ export class ExplorerService {
           'Content-Type': 'application/vnd.api+json',
         },
       })
+
+      console.log(await res.json())
     } catch (e) {
       console.log(e)
     }
