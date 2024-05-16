@@ -85,6 +85,7 @@ export class ExplorerService {
       }
     }
 
+    console.log(`report unbind: ${JSON.stringify(params)}`)
     try {
       const res = await fetch(url, {
         method: 'POST',
