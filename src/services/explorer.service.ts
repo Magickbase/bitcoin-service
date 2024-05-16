@@ -10,6 +10,7 @@ import { RGBPPConfig } from "src/config/nervos.config"
 export class ExplorerService {
   #host: string;
   #rgbppConfig: RGBPPConfig
+  #retryTimes = 3;
 
   constructor(private readonly _configService: ConfigService, private readonly _nervosService: NervosService) {
     this.#host = this._configService.get('nervos.explorerUrl')
@@ -17,32 +18,42 @@ export class ExplorerService {
   }
 
   getLiveCells = async (page: number, pageSize: number, codeHash: HexString, hashType: HashType): Promise<Cell[]> => {
-    const url = `${this.#host}/api/v2/scripts/referring_cells?code_hash=${codeHash}&hash_type=${hashType}&page=${page}&page_size=${pageSize}`
+    let retryTimes = 0
+    while (retryTimes < this.#retryTimes) {
+      try {
+        const url = `${this.#host}/api/v2/scripts/referring_cells?code_hash=${codeHash}&hash_type=${hashType}&page=${page}&page_size=${pageSize}`
 
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/vnd.api+json',
-        'Content-Type': 'application/vnd.api+json',
-      },
-    })
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/vnd.api+json',
+            'Content-Type': 'application/vnd.api+json',
+          },
+        })
 
-    const data = await res.json() as any
-    const cells = data.data.referring_cells as Array<any>
-    const transactions = await this._nervosService.getMappedMultipleTransaction(cells.map(cell => cell.tx_hash))
+        const data = await res.json() as any
+        const cells = data.data.referring_cells as Array<any>
+        const transactions = await this._nervosService.getMappedMultipleTransaction(cells.map(cell => cell.tx_hash))
 
-    return cells.map(cell => {
-      const transaction = transactions.get(cell.tx_hash)
+        return cells.map(cell => {
+          const transaction = transactions.get(cell.tx_hash)
 
-      return {
-        cellOutput: transaction.outputs[cell.cell_index],
-        data: transactions.get(cell.tx_hash).outputsData[cell.cell_index],
-        outPoint: {
-          txHash: cell.tx_hash,
-          index: cell.cell_index,
-        }
+          return {
+            cellOutput: transaction.outputs[cell.cell_index],
+            data: transactions.get(cell.tx_hash).outputsData[cell.cell_index],
+            outPoint: {
+              txHash: cell.tx_hash,
+              index: cell.cell_index,
+            }
+          }
+        })
+      } catch (e) {
+        console.log(e)
+        retryTimes++
       }
-    })
+    }
+
+    return []
   }
 
   filterUnbindCell = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
