@@ -32,13 +32,13 @@ export class SyncService {
           if (vin.txid && vin.vout) {
             acc.set(
               buildRgbppLockArgs(vin.vout, vin.txid),
-              { txid: cur.hash, vin: { index: vin.vout, txid: vin.txid } },
+              { txid: cur.txid, vin: { index: vin.vout, txid: vin.txid } },
             )
           }
         })
         return acc
-      }, new Map<HexString, ConsumedBitcoinOutput>
-      )
+      }, new Map<HexString, ConsumedBitcoinOutput>)
+
       const filtered = await this._explorerService.filterUnbindCell(unbindTransaction)
       console.log(filtered)
       for (const record of filtered) {
