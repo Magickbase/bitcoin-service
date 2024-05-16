@@ -95,7 +95,7 @@ export class ExplorerService {
         },
       })
 
-      console.log(await res.json())
+      console.log(await res.text(), res.status)
     } catch (e) {
       console.log(e)
     }
