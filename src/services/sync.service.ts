@@ -29,7 +29,7 @@ export class SyncService {
 
       const unbindTransaction = transactions.reduce((acc, cur) => {
         cur.vin.forEach(vin => {
-          if (vin.txid && vin.vout) {
+          if (vin.txid && vin.vout !== undefined && vin.vout !== null) {
             acc.set(
               buildRgbppLockArgs(vin.vout, vin.txid),
               { txid: cur.txid, vin: { index: vin.vout, txid: vin.txid } },
