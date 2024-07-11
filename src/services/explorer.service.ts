@@ -17,6 +17,29 @@ export class ExplorerService {
     this.#rgbppConfig = this._configService.get('nervos.rgbpp')
   }
 
+  getTotalLiveCellCount = async (codeHash: HexString, hashType: HashType): Promise<number> => {
+    let retryTimes = 0
+    while (retryTimes < this.#retryTimes) {
+      try {
+        const url = `${this.#host}/api/v2/scripts/referring_cells?code_hash=${codeHash}&hash_type=${hashType}&page=1&page_size=1`
+
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/vnd.api+json',
+            'Content-Type': 'application/vnd.api+json',
+          },
+        })
+
+        const data = await res.json() as any
+        return data.data.meta.total
+      } catch (e) {
+        console.log(e)
+        retryTimes++
+      }
+    }
+  }
+
   getLiveCells = async (page: number, pageSize: number, codeHash: HexString, hashType: HashType): Promise<Cell[]> => {
     let retryTimes = 0
     while (retryTimes < this.#retryTimes) {
@@ -57,24 +80,34 @@ export class ExplorerService {
   }
 
   filterUnbindCell = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
-    const filtered: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[] = []
+    const totalCells = await this.getTotalLiveCellCount(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
 
-    let page = 1
-    while (true) {
-      const cells = await this.getLiveCells(page, 100, this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
-      if (cells.length === 0) {
-        break;
-      }
-
-      cells.forEach(cell => {
-        const consumedBy = bitcoinTransactions.get(cell.cellOutput.lock.args)
-        if (consumedBy) {
-          filtered.push({ consumedBy, outpoint: cell.outPoint })
-        }
-      })
-
+    let page = 1;
+    const promises: Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]>[] = []
+    while (page <= totalCells / 100 + 1) {
+      promises.push(this.filterUnbindCellPerPage(page, bitcoinTransactions))
       page++
     }
+
+    const res = await Promise.all(promises)
+
+
+    return res.reduce((acc, cur) => {
+      return acc.concat(cur)
+    }, [])
+  }
+
+  filterUnbindCellPerPage = async (page: number, bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
+    const filtered: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[] = []
+
+    const cells = await this.getLiveCells(page, 100, this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
+
+    cells.forEach(cell => {
+      const consumedBy = bitcoinTransactions.get(cell.cellOutput.lock.args)
+      if (consumedBy) {
+        filtered.push({ consumedBy, outpoint: cell.outPoint })
+      }
+    })
 
     return filtered
   }
