@@ -46,23 +46,26 @@ export class ExplorerService {
     const totalCells = await this.getTotalLiveCellCount(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
 
     let page = 1;
-    const outpointPromises: Promise<{ txHash: HexString, cellIndex: number }[]>[] = []
-    while (page <= totalCells / 100 + 1) {
-      outpointPromises.push(this.getLiveCellsOutPoint(page, 100, this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType))
+    let cellsOutpoint: { txHash: string; cellIndex: number }[] = []
+    // const outpointPromises: Promise<{ txHash: HexString, cellIndex: number }[]>[] = []
+    while (page <= totalCells / 1000 + 1) {
+      cellsOutpoint = cellsOutpoint.concat(await this.getLiveCellsOutPoint(page, 1000, this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType))
       page++
     }
+    // console.log(cellsOutpoint)
 
-    const cellsOutpointRes = (await Promise.all(outpointPromises))
+    // const cellsOutpointRes = (await Promise.all(outpointPromises))
 
-    const cellsOutpoint = cellsOutpointRes.reduce((acc, cur) => {
-      return acc.concat(cur)
-    }, [])
+    // const cellsOutpoint = cellsOutpointRes.reduce((acc, cur) => {
+    //   return acc.concat(cur)
+    // }, [])
 
     const cellsPromises: Promise<Map<string, Transaction>>[] = []
     for (let i = 0; i < cellsOutpoint.length; i += 10) {
       cellsPromises.push(this._nervosService.getMappedMultipleTransaction(cellsOutpoint.map(cell => cell.txHash)))
     }
     const transactionsRes = await Promise.all(cellsPromises)
+    console.log(transactionsRes)
     const transactions = transactionsRes.reduce((acc, cur) => {
       return new Map([...acc, ...cur])
     }, new Map<string, Transaction>())
