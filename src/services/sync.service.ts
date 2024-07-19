@@ -43,17 +43,21 @@ export class SyncService {
         return acc
       }, new Map<HexString, ConsumedBitcoinOutput>)
 
-      logger.log(`filterUnbindCell start: ${Date.now().toString()}`)
-      const filtered = await this._explorerService.filterUnbindCell(unbindTransaction, logger)
-      logger.log(`filterUnbindCell stop: ${Date.now().toString()}`)
-      logger.log(filtered)
-      for (const record of filtered) {
-        await this._explorerService.reportUnbind(record)
-      }
-      logger.log('reported')
+      this.report(unbindTransaction, logger)
 
       this.#startBlock++
       logger.log('end')
     }
+  }
+
+  report = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>, logger: SyncLogger) => {
+    logger.log(`filterUnbindCell start: ${Date.now().toString()}`)
+    const filtered = await this._explorerService.filterUnbindCell(bitcoinTransactions, logger)
+    logger.log(`filterUnbindCell stop: ${Date.now().toString()}`)
+    logger.log(filtered)
+    for (const record of filtered) {
+      await this._explorerService.reportUnbind(record)
+    }
+    logger.log('reported')
   }
 }
