@@ -24,9 +24,7 @@ export class ExplorerService {
       try {
         const url = `${this.#host}/api/v2/rgb_live_cells?code_hash=${codeHash}&hash_type=${hashType}&page=1&page_size=1`
 
-        const client = new ProxyAgent('http://127.0.0.1:7890')
         const res = await fetch(url, {
-          dispatcher: client,
           method: 'GET',
           headers: {
             Accept: 'application/vnd.api+json',
@@ -89,9 +87,7 @@ export class ExplorerService {
       try {
         const url = `${this.#host}/api/v2/rgb_live_cells?code_hash=${codeHash}&hash_type=${hashType}&page=${page}&page_size=${pageSize}`
 
-        const client = new ProxyAgent({ uri: 'http://127.0.0.1:7890', bodyTimeout: 1000000 })
         const res = await fetch(url, {
-          dispatcher: client,
           method: 'GET',
           headers: {
             Accept: 'application/vnd.api+json',
