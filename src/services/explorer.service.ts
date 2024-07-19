@@ -5,6 +5,7 @@ import { Injectable } from "@nestjs/common"
 import { Cell, HashType, HexString, OutPoint, Transaction } from "@ckb-lumos/lumos"
 import { ConsumedBitcoinOutput } from "src/type"
 import { RGBPPConfig } from "src/config/nervos.config"
+import { SyncLogger } from "src/logger/sync.logger"
 
 @Injectable()
 export class ExplorerService {
@@ -42,33 +43,31 @@ export class ExplorerService {
     }
   }
 
-  getTotalLiveCells = async (codeHash: HexString, hashType: HashType): Promise<Cell[]> => {
-    const totalCells = await this.getTotalLiveCellCount(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
+  getTotalLiveCells = async (codeHash: HexString, hashType: HashType, logger: SyncLogger): Promise<Cell[]> => {
+    const totalCells = await this.getTotalLiveCellCount(codeHash, hashType)
+    logger.log(`total cells: ${totalCells}`)
 
     let page = 1;
     let cellsOutpoint: { txHash: string; cellIndex: number }[] = []
     // const outpointPromises: Promise<{ txHash: HexString, cellIndex: number }[]>[] = []
     while (page <= totalCells / 1000 + 1) {
-      cellsOutpoint = cellsOutpoint.concat(await this.getLiveCellsOutPoint(page, 1000, this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType))
+      logger.log(`get live cells page: ${page}`)
+      cellsOutpoint = cellsOutpoint.concat(await this.getLiveCellsOutPoint(page, 1000, codeHash, hashType, logger))
       page++
     }
-    // console.log(cellsOutpoint)
 
-    // const cellsOutpointRes = (await Promise.all(outpointPromises))
-
-    // const cellsOutpoint = cellsOutpointRes.reduce((acc, cur) => {
-    //   return acc.concat(cur)
-    // }, [])
-
-    const cellsPromises: Promise<Map<string, Transaction>>[] = []
-    for (let i = 0; i < cellsOutpoint.length; i += 10) {
-      cellsPromises.push(this._nervosService.getMappedMultipleTransaction(cellsOutpoint.map(cell => cell.txHash)))
+    // const cellsPromises: Promise<Map<string, Transaction>>[] = []
+    let transactions = new Map<string, Transaction>();
+    for (let i = 0; i < cellsOutpoint.length; i += 100) {
+      logger.log(`get transactions from ${i} to ${i + 100}`)
+      const transactionsRes = await this._nervosService.getMappedMultipleTransaction(cellsOutpoint.slice(i, i + 100).map(cell => cell.txHash), logger);
+      transactions = new Map([...transactions, ...transactionsRes]);
     }
-    const transactionsRes = await Promise.all(cellsPromises)
-    console.log(transactionsRes)
-    const transactions = transactionsRes.reduce((acc, cur) => {
-      return new Map([...acc, ...cur])
-    }, new Map<string, Transaction>())
+    // const transactionsRes = await Promise.all(cellsPromises)
+    // console.log(transactionsRes)
+    // const transactions = transactionsRes.reduce((acc, cur) => {
+    //   return new Map([...acc, ...cur])
+    // }, new Map<string, Transaction>())
 
     return cellsOutpoint.map(cell => {
       const transaction = transactions.get(cell.txHash)
@@ -84,7 +83,7 @@ export class ExplorerService {
     })
   }
 
-  getLiveCellsOutPoint = async (page: number, pageSize: number, codeHash: HexString, hashType: HashType): Promise<{ txHash: HexString, cellIndex: number }[]> => {
+  getLiveCellsOutPoint = async (page: number, pageSize: number, codeHash: HexString, hashType: HashType, logger: SyncLogger): Promise<{ txHash: HexString, cellIndex: number }[]> => {
     let retryTimes = 0
     while (retryTimes < this.#retryTimes) {
       try {
@@ -108,7 +107,7 @@ export class ExplorerService {
           }
         })
       } catch (e) {
-        console.log(e)
+        logger.error(e)
         retryTimes++
       }
     }
@@ -116,8 +115,8 @@ export class ExplorerService {
     return []
   }
 
-  getCells = async (cells: { txHash: HexString, cellIndex: number }[]): Promise<Cell[]> => {
-    const transactions = await this._nervosService.getMappedMultipleTransaction(cells.map(cell => cell.txHash))
+  getCells = async (cells: { txHash: HexString, cellIndex: number }[], logger: SyncLogger): Promise<Cell[]> => {
+    const transactions = await this._nervosService.getMappedMultipleTransaction(cells.map(cell => cell.txHash), logger)
 
     return cells.map(cell => {
       const transaction = transactions.get(cell.txHash)
@@ -133,7 +132,7 @@ export class ExplorerService {
     })
   }
 
-  getLiveCells = async (page: number, pageSize: number, codeHash: HexString, hashType: HashType): Promise<Cell[]> => {
+  getLiveCells = async (page: number, pageSize: number, codeHash: HexString, hashType: HashType, logger: SyncLogger): Promise<Cell[]> => {
     let retryTimes = 0
     while (retryTimes < this.#retryTimes) {
       try {
@@ -149,7 +148,7 @@ export class ExplorerService {
 
         const data = await res.json() as any
         const cells = data.cells as Array<any>
-        const transactions = await this._nervosService.getMappedMultipleTransaction(cells.map(cell => cell.tx_hash))
+        const transactions = await this._nervosService.getMappedMultipleTransaction(cells.map(cell => cell.tx_hash), logger)
 
         return cells.map(cell => {
           const transaction = transactions.get(cell.tx_hash)
@@ -172,27 +171,37 @@ export class ExplorerService {
     return []
   }
 
-  filterUnbindCell = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
-    const totalCells = await this.getTotalLiveCellCount(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
+  filterUnbindCell = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>, logger: SyncLogger): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
+    const filtered: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[] = []
+    const liveCells = await this.getTotalLiveCells(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType, logger)
+    liveCells.forEach(cell => {
+      const consumedBy = bitcoinTransactions.get(cell.cellOutput.lock.args)
+      if (consumedBy) {
+        filtered.push({ consumedBy, outpoint: cell.outPoint })
+      }
+    })
 
-    let page = 1;
-    const promises: Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]>[] = []
-    while (page <= totalCells / 100 + 1) {
-      promises.push(this.filterUnbindCellPerPage(page, bitcoinTransactions))
-      page++
-    }
+    return filtered
+    // const totalCells = await this.getTotalLiveCellCount(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
 
-    const res = await Promise.all(promises)
+    // let page = 1;
+    // const promises: Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]>[] = []
+    // while (page <= totalCells / 100 + 1) {
+    //   promises.push(this.filterUnbindCellPerPage(page, bitcoinTransactions))
+    //   page++
+    // }
 
-    return res.reduce((acc, cur) => {
-      return acc.concat(cur)
-    }, [])
+    // const res = await Promise.all(promises)
+
+    // return res.reduce((acc, cur) => {
+    //   return acc.concat(cur)
+    // }, [])
   }
 
-  filterUnbindCellPerPage = async (page: number, bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
+  filterUnbindCellPerPage = async (page: number, bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>, logger: SyncLogger): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
     const filtered: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[] = []
 
-    const cells = await this.getTotalLiveCells(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType)
+    const cells = await this.getTotalLiveCells(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType, logger)
 
     cells.forEach(cell => {
       const consumedBy = bitcoinTransactions.get(cell.cellOutput.lock.args)

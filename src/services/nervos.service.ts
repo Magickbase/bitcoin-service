@@ -4,6 +4,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { throwIfEmpty } from "rxjs";
 import { NervosConfig, RGBPPConfig } from "src/config/nervos.config";
+import { SyncLogger } from "src/logger/sync.logger";
 
 @Injectable()
 export class NervosService {
@@ -21,7 +22,8 @@ export class NervosService {
     this.#rgbppConfig = config.rgbpp
   }
 
-  getMultipleTransaction = async (txHashes: HexString[]): Promise<TransactionWithStatus[]> => {
+  getMultipleTransaction = async (txHashes: HexString[], logger: SyncLogger): Promise<TransactionWithStatus[]> => {
+    logger.log(`start get multiple transaction`)
     if (txHashes.length === 0) {
       return []
     }
@@ -32,14 +34,15 @@ export class NervosService {
         const txes = await this.#rpc.createBatchRequest(txHashes.map(txHash => (['getTransaction', txHash]))).exec()
         return txes
       } catch (e) {
-        console.log(e)
+        logger.error(e)
         retryTimes++
       }
     }
   }
 
-  getMappedMultipleTransaction = async (txHashes: HexString[]) => {
-    const txes = await this.getMultipleTransaction(txHashes)
+  getMappedMultipleTransaction = async (txHashes: HexString[], logger: SyncLogger) => {
+    logger.log(`start get mapped multiple transaction`)
+    const txes = await this.getMultipleTransaction(txHashes, logger)
     return txes.reduce((acc, tx) => {
       return acc.set(tx.transaction.hash, tx.transaction)
     }, new Map<HexString, Transaction>())
