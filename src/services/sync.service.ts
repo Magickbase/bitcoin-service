@@ -24,7 +24,7 @@ export class SyncService {
       const logger = new SyncLogger(this.#startBlock)
       logger.log('start')
       logger.log(`getBTCTransactions start: ${Date.now().toString()}`)
-      const transactions = await this._bitcoinService.getTransactionsByBlockNumber(this.#startBlock)
+      const transactions = await this._bitcoinService.getTransactionsByBlockNumber(this.#startBlock, logger)
       logger.log(`getBTCTransactions stop: ${Date.now().toString()}`)
       if (!transactions) {
         await scheduler.wait(5 * 60 * 1000)
@@ -56,7 +56,7 @@ export class SyncService {
     logger.log(`filterUnbindCell stop: ${Date.now().toString()}`)
     logger.log(filtered)
     for (const record of filtered) {
-      await this._explorerService.reportUnbind(record)
+      await this._explorerService.reportUnbind(record, logger)
     }
     logger.log('reported')
   }

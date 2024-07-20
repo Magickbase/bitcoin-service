@@ -18,7 +18,7 @@ export class ExplorerService {
     this.#rgbppConfig = this._configService.get('nervos.rgbpp')
   }
 
-  getTotalLiveCellCount = async (codeHash: HexString, hashType: HashType): Promise<number> => {
+  getTotalLiveCellCount = async (codeHash: HexString, hashType: HashType, logger: SyncLogger): Promise<number> => {
     let retryTimes = 0
     while (retryTimes < this.#retryTimes) {
       try {
@@ -35,14 +35,14 @@ export class ExplorerService {
         const data = await res.json() as any
         return data.meta.total
       } catch (e) {
-        console.log(e)
+        logger.error(e)
         retryTimes++
       }
     }
   }
 
   getTotalLiveCells = async (codeHash: HexString, hashType: HashType, logger: SyncLogger): Promise<Cell[]> => {
-    const totalCells = await this.getTotalLiveCellCount(codeHash, hashType)
+    const totalCells = await this.getTotalLiveCellCount(codeHash, hashType, logger)
     logger.log(`total cells: ${totalCells}`)
 
     let page = 1;
@@ -159,7 +159,7 @@ export class ExplorerService {
           }
         })
       } catch (e) {
-        console.log(e)
+        logger.error(e)
         retryTimes++
       }
     }
@@ -209,7 +209,7 @@ export class ExplorerService {
     return filtered
   }
 
-  reportUnbind = async (unbind: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }) => {
+  reportUnbind = async (unbind: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }, logger: SyncLogger) => {
     const url = `${this.#host}/api/v2/bitcoin_vouts/verify`
 
     const params = {
@@ -226,7 +226,7 @@ export class ExplorerService {
       }
     }
 
-    console.log(`report unbind: ${JSON.stringify(params)}`)
+    logger.log(`report unbind: ${JSON.stringify(params)}`)
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -237,9 +237,9 @@ export class ExplorerService {
         },
       })
 
-      console.log(await res.text(), res.status)
+      logger.log(`${res.status}`)
     } catch (e) {
-      console.log(e)
+      logger.error(e)
     }
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { IBlock, ITx, RPCClient } from "src/bitcoin";
 import { BitcoinConfig } from "src/config/bitcoin.config";
+import { SyncLogger } from "src/logger/sync.logger";
 
 @Injectable()
 export class BitcoinService {
@@ -12,19 +13,19 @@ export class BitcoinService {
     this.#rpc = new RPCClient(config.rpc)
   }
 
-  getBlockByBlockNumber = async (height: number): Promise<IBlock> => {
+  getBlockByBlockNumber = async (height: number, logger: SyncLogger): Promise<IBlock> => {
     try {
       const blockhash = await this.#rpc.getblockhash({ height })
 
       return this.#rpc.getblock({ blockhash, verbosity: 2 })
     } catch (e) {
-      console.error(e)
+      logger.error(e)
       return null
     }
   }
 
-  getTransactionsByBlockNumber = async (height: number): Promise<ITx[]> => {
-    const block = await this.getBlockByBlockNumber(height)
+  getTransactionsByBlockNumber = async (height: number, logger: SyncLogger): Promise<ITx[]> => {
+    const block = await this.getBlockByBlockNumber(height, logger)
     if (!block) {
       return null
     }
