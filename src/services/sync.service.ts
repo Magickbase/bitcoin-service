@@ -27,6 +27,7 @@ export class SyncService {
       const transactions = await this._bitcoinService.getTransactionsByBlockNumber(this.#startBlock, logger)
       logger.log(`getBTCTransactions stop: ${Date.now().toString()}`)
       if (!transactions) {
+        logger.log('stop with no transaction, wait 5 minutes')
         await scheduler.wait(5 * 60 * 1000)
         continue
       }
