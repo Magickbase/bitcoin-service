@@ -8,10 +8,18 @@ export class SyncLogger extends ConsoleLogger {
   }
 
   log(message: any): void {
+    if (message instanceof Object) {
+      message = JSON.stringify(message);
+    }
+
     super.log(`[Block ${this.#block}] ${message}`);
   }
 
   error(message: any): void {
+    if (message instanceof Object) {
+      message = JSON.stringify(message);
+    }
+
     super.error(`[Block ${this.#block}] ${message}`);
   }
 }
