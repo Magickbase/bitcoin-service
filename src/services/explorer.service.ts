@@ -50,8 +50,9 @@ export class ExplorerService {
     let page = 1;
     let cellsOutpoint: { txHash: string; cellIndex: number }[] = []
     // const outpointPromises: Promise<{ txHash: HexString, cellIndex: number }[]>[] = []
-    while (page <= totalCells / 1000 + 1) {
-      logger.log(`get live cells page: ${page}`)
+    const totalPage = totalCells / 1000 + 1
+    while (page <= totalPage) {
+      logger.log(`get live cells page: ${page}, total: ${totalPage}`)
       cellsOutpoint = cellsOutpoint.concat(await this.getLiveCellsOutPoint(page, 1000, codeHash, hashType, logger))
       page++
     }
