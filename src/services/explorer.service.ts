@@ -17,7 +17,7 @@ export class ExplorerService {
   constructor(private readonly _configService: ConfigService, private readonly _nervosService: NervosService) {
     this.#host = this._configService.get('nervos.explorerUrl')
     this.#rgbppConfig = this._configService.get('nervos.rgbpp')
-    this.#transactionCountLimit = this._configService.get('nervos.transaction.transactionLimit')
+    this.#transactionCountLimit = this._configService.get('nervos.transactionLimit')
   }
 
   getTotalLiveCellCount = async (codeHash: HexString, hashType: HashType, logger: SyncLogger): Promise<number> => {
