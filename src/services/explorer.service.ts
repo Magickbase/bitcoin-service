@@ -56,8 +56,8 @@ export class ExplorerService {
 
     // const cellsPromises: Promise<Map<string, Transaction>>[] = []
     let transactions = new Map<string, Transaction>();
-    for (let i = 0; i < cellsOutpoint.length; i += 100) {
-      logger.log(`get transactions from ${i} to ${i + 100}, total: ${cellsOutpoint.length}`)
+    for (let i = 0; i < cellsOutpoint.length; i += 500) {
+      logger.log(`get transactions from ${i} to ${i + 500}, total: ${cellsOutpoint.length}`)
       const transactionsRes = await this._nervosService.getMappedMultipleTransaction(cellsOutpoint.slice(i, i + 100).map(cell => cell.txHash), logger);
       transactions = new Map([...transactions, ...transactionsRes]);
     }
