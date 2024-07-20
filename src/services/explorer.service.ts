@@ -61,7 +61,7 @@ export class ExplorerService {
     let transactions = new Map<string, Transaction>();
     for (let i = 0; i < cellsOutpoint.length; i += this.#transactionCountLimit) {
       logger.log(`get transactions from ${i} to ${i + this.#transactionCountLimit}, total: ${cellsOutpoint.length}`)
-      const transactionsRes = await this._nervosService.getMappedMultipleTransaction(cellsOutpoint.slice(i, i + 100).map(cell => cell.txHash), logger);
+      const transactionsRes = await this._nervosService.getMappedMultipleTransaction(cellsOutpoint.slice(i, i + this.#transactionCountLimit).map(cell => cell.txHash), logger);
       transactions = new Map([...transactions, ...transactionsRes]);
     }
     // const transactionsRes = await Promise.all(cellsPromises)
