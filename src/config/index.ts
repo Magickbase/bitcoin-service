@@ -37,6 +37,7 @@ export default (): Config => {
       }
     },
     nervos: {
+      transactionLimit: parseInt(process.env.NERVOS_TRANSACTION_LIMIT, 10) || 100,
       explorerUrl: process.env.NERVOS_EXPLORER_URL || 'https://mainnet-api.explorer.nervos.org',
       rgbpp: {
         codeHash: process.env.NERVOS_RGBPP_CODE_HASH || '0x61ca7a4796a4eb19ca4f0d065cb9b10ddcf002f10f7cbb810c706cb6bb5c3248',

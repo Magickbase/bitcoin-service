@@ -11,11 +11,13 @@ import { SyncLogger } from "src/logger/sync.logger"
 export class ExplorerService {
   #host: string;
   #rgbppConfig: RGBPPConfig
+  #transactionCountLimit: number
   #retryTimes = 3;
 
   constructor(private readonly _configService: ConfigService, private readonly _nervosService: NervosService) {
     this.#host = this._configService.get('nervos.explorerUrl')
     this.#rgbppConfig = this._configService.get('nervos.rgbpp')
+    this.#transactionCountLimit = this._configService.get('nervos.transaction.transactionLimit')
   }
 
   getTotalLiveCellCount = async (codeHash: HexString, hashType: HashType, logger: SyncLogger): Promise<number> => {
@@ -56,8 +58,8 @@ export class ExplorerService {
 
     // const cellsPromises: Promise<Map<string, Transaction>>[] = []
     let transactions = new Map<string, Transaction>();
-    for (let i = 0; i < cellsOutpoint.length; i += 500) {
-      logger.log(`get transactions from ${i} to ${i + 500}, total: ${cellsOutpoint.length}`)
+    for (let i = 0; i < cellsOutpoint.length; i += this.#transactionCountLimit) {
+      logger.log(`get transactions from ${i} to ${i + this.#transactionCountLimit}, total: ${cellsOutpoint.length}`)
       const transactionsRes = await this._nervosService.getMappedMultipleTransaction(cellsOutpoint.slice(i, i + 100).map(cell => cell.txHash), logger);
       transactions = new Map([...transactions, ...transactionsRes]);
     }

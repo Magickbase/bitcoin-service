@@ -4,6 +4,7 @@ export interface NervosConfig {
   explorerUrl: string;
   rgbpp: RGBPPConfig;
   rpc: NervosRPCConfig;
+  transactionLimit: number
 }
 
 export interface RGBPPConfig {
