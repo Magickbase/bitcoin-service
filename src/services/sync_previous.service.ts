@@ -45,7 +45,7 @@ export class SyncPreviousService {
         return acc
       }, new Map<HexString, ConsumedBitcoinOutput>)
 
-      this.report(unbindTransaction, liveCells, logger)
+      await this.report(unbindTransaction, liveCells, logger)
 
       this.#startBlock++
       logger.log('end')
