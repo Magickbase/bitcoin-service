@@ -6,10 +6,11 @@ import { SyncService } from './services/sync.service';
 import { ExplorerService } from './services/explorer.service';
 import { NervosService } from './services/nervos.service';
 import { SyncLogger } from './logger/sync.logger';
+import { SyncPreviousService } from './services/sync_previous.service';
 
 @Module({
   imports: [ConfigModule.forRoot({ load: [config] })],
   controllers: [],
-  providers: [BitcoinService, SyncService, ExplorerService, NervosService, SyncLogger],
+  providers: [BitcoinService, SyncService, ExplorerService, NervosService, SyncLogger, SyncPreviousService],
 })
 export class AppModule { }
