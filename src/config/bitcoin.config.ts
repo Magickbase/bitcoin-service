@@ -1,6 +1,8 @@
 export interface BitcoinConfig {
   rpc: BitcoinRPCConig
   startBlockNUmber: number;
+  previousStartBlockNUmber: number;
+  previousStopBlockNUmber: number
 }
 
 export interface BitcoinRPCConig {
