@@ -1,8 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { BitcoinService } from "./bitcoin.service";
-import { scheduler } from 'node:timers/promises';
 import { ExplorerService } from "./explorer.service";
-import { buildRgbppLockArgs, u32ToBe } from '@rgbpp-sdk/ckb'
 import { ConfigService } from "@nestjs/config";
 import { Cell, HexString, OutPoint } from "@ckb-lumos/lumos";
 import { ConsumedBitcoinOutput } from "src/type";
@@ -15,10 +13,8 @@ import { SyncPreviousLogger } from "src/logger/sync-previous.logger";
 @Injectable()
 export class SyncPreviousService {
   #startBlock: number
-  #stopBlock: number
   #rgbppConfig: RGBPPConfig
   constructor(
-    private readonly _bitcoinService: BitcoinService,
     private readonly _explorerService: ExplorerService,
     private readonly _bitcoinBlockstreamService: BitcoinBlockstream,
     private readonly _configService: ConfigService,

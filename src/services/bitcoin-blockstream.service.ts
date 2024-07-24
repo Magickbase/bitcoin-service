@@ -1,7 +1,9 @@
+import { Injectable } from "@nestjs/common"
 import { ConfigService } from "@nestjs/config"
 import { BitcoinConfig } from "src/config/bitcoin.config"
 import { ConsumedBitcoinOutput, Spent } from "src/type"
 
+@Injectable()
 export class BitcoinBlockstream {
   #rpc: string
 
