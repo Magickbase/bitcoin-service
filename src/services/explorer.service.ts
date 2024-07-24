@@ -1,7 +1,7 @@
 import { ConfigService } from "@nestjs/config"
 import { ProxyAgent, fetch } from 'undici'
 import { NervosService } from "./nervos.service"
-import { Injectable } from "@nestjs/common"
+import { ConsoleLogger, Injectable } from "@nestjs/common"
 import { Cell, HashType, HexString, OutPoint, Transaction } from "@ckb-lumos/lumos"
 import { ConsumedBitcoinOutput } from "src/type"
 import { RGBPPConfig } from "src/config/nervos.config"
@@ -212,7 +212,7 @@ export class ExplorerService {
     return filtered
   }
 
-  reportUnbind = async (unbind: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }, logger: SyncLogger) => {
+  reportUnbind = async (unbind: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }, logger: ConsoleLogger) => {
     const url = `${this.#host}/api/v2/bitcoin_vouts/verify`
 
     const params = {

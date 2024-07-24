@@ -27,6 +27,9 @@ export default (): Config => {
   return {
     retryTimes: parseInt(process.env.RETRY_TIMES, 10) || 3,
     bitcoin: {
+      blockstream: {
+        rpc: process.env.BITCOIN_BLOCKSTREAM_RPC || 'https://blockstream.info/api',
+      },
       previousStartBlockNUmber: parseInt(process.env.BITCOIN_PREVIOUS_START_BLOCK_NUMBER, 10) || 0,
       previousStopBlockNUmber: parseInt(process.env.BITCOIN_PREVIOUS_STOP_BLOCK_NUMBER, 10) || 0,
       startBlockNUmber: parseInt(process.env.BITCOIN_START_BLOCK_NUMBER, 10) || 0,

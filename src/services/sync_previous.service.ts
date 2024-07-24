@@ -2,12 +2,15 @@ import { Injectable } from "@nestjs/common";
 import { BitcoinService } from "./bitcoin.service";
 import { scheduler } from 'node:timers/promises';
 import { ExplorerService } from "./explorer.service";
-import { buildRgbppLockArgs } from '@rgbpp-sdk/ckb'
+import { buildRgbppLockArgs, u32ToBe } from '@rgbpp-sdk/ckb'
 import { ConfigService } from "@nestjs/config";
 import { Cell, HexString, OutPoint } from "@ckb-lumos/lumos";
 import { ConsumedBitcoinOutput } from "src/type";
 import { SyncLogger } from "src/logger/sync.logger";
 import { RGBPPConfig } from "src/config/nervos.config";
+import { parseBTCUTXO } from "src/utils";
+import { BitcoinBlockstream } from "./bitcoin-blockstream.service";
+import { SyncPreviousLogger } from "src/logger/sync-previous.logger";
 
 @Injectable()
 export class SyncPreviousService {
@@ -17,39 +20,24 @@ export class SyncPreviousService {
   constructor(
     private readonly _bitcoinService: BitcoinService,
     private readonly _explorerService: ExplorerService,
+    private readonly _bitcoinBlockstreamService: BitcoinBlockstream,
     private readonly _configService: ConfigService,
   ) {
-    this.#startBlock = this._configService.get('bitcoin.previousStartBlockNUmber')
-    this.#stopBlock = this._configService.get('bitcoin.previousStopBlockNUmber')
     this.#rgbppConfig = this._configService.get('nervos.rgbpp')
   }
 
   sync = async () => {
     const liveCells = await this._explorerService.getTotalLiveCells(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType, new SyncLogger(this.#startBlock))
-    while (this.#startBlock <= this.#stopBlock) {
-      const logger = new SyncLogger(this.#startBlock)
-      logger.log('start')
-      logger.log(`getBTCTransactions start: ${Date.now().toString()}`)
-      const transactions = await this._bitcoinService.getTransactionsByBlockNumber(this.#startBlock, logger)
-      logger.log(`getBTCTransactions stop: ${Date.now().toString()}`)
-
-      const unbindTransaction = transactions.reduce((acc, cur) => {
-        cur.vin.forEach(vin => {
-          if (vin.txid && vin.vout !== undefined && vin.vout !== null) {
-            acc.set(
-              buildRgbppLockArgs(vin.vout, vin.txid),
-              { txid: cur.txid, vin: { index: vin.vout, txid: vin.txid } },
-            )
-          }
-        })
-        return acc
-      }, new Map<HexString, ConsumedBitcoinOutput>)
-
-      await this.report(unbindTransaction, liveCells, logger)
-
-      this.#startBlock++
-      logger.log('end')
+    for (const index in liveCells) {
+      const cell = liveCells[index]
+      const logger = new SyncPreviousLogger(liveCells.length, parseInt(index, 10))
+      const { txid, vout } = parseBTCUTXO(cell.cellOutput.lock.args)
+      const consumedStatus = await this._bitcoinBlockstreamService.isVoutSpent(txid, vout)
+      if (consumedStatus.consumed) {
+        this._explorerService.reportUnbind({ outpoint: cell.outPoint, consumedBy: consumedStatus.consumedBy }, logger)
+      }
     }
+
   }
 
   report = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>, liveCells: Cell[], logger: SyncLogger) => {

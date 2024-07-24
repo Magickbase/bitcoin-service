@@ -3,6 +3,11 @@ export interface BitcoinConfig {
   startBlockNUmber: number;
   previousStartBlockNUmber: number;
   previousStopBlockNUmber: number
+  blockstream: Blockstream
+}
+
+export interface Blockstream {
+  rpc: string
 }
 
 export interface BitcoinRPCConig {
