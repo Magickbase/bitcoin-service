@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 import { BitcoinService } from "./bitcoin.service";
-import { scheduler } from 'node:timers/promises';
 import { ExplorerService } from "./explorer.service";
 import { buildRgbppLockArgs } from '@rgbpp-sdk/ckb'
 import { ConfigService } from "@nestjs/config";
@@ -13,6 +12,7 @@ import { RGBPPConfig } from "src/config/nervos.config";
 export class SyncPreviousService {
   #startBlock: number
   #stopBlock: number
+  #step: number
   #rgbppConfig: RGBPPConfig
   constructor(
     private readonly _bitcoinService: BitcoinService,
@@ -20,6 +20,7 @@ export class SyncPreviousService {
     private readonly _configService: ConfigService,
   ) {
     this.#startBlock = this._configService.get('bitcoin.previousStartBlockNUmber')
+    this.#step = this._configService.get('bitcoin.previousStep')
     this.#stopBlock = this._configService.get('bitcoin.previousStopBlockNUmber')
     this.#rgbppConfig = this._configService.get('nervos.rgbpp')
   }
@@ -30,7 +31,7 @@ export class SyncPreviousService {
       const logger = new SyncLogger(this.#startBlock)
       logger.log('start')
       logger.log(`getBTCTransactions start: ${Date.now().toString()}`)
-      const transactions = await this._bitcoinService.getTransactionsByBlockNumber(this.#startBlock, logger)
+      const transactions = await this._bitcoinService.getMultipleBlockByBlockNumber(this.#startBlock, this.#startBlock + this.#step, logger)
       logger.log(`getBTCTransactions stop: ${Date.now().toString()}`)
 
       const unbindTransaction = transactions.reduce((acc, cur) => {
@@ -47,7 +48,7 @@ export class SyncPreviousService {
 
       await this.report(unbindTransaction, liveCells, logger)
 
-      this.#startBlock++
+      this.#startBlock += this.#step
       logger.log('end')
     }
   }

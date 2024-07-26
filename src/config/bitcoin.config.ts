@@ -3,6 +3,7 @@ export interface BitcoinConfig {
   startBlockNUmber: number;
   previousStartBlockNUmber: number;
   previousStopBlockNUmber: number
+  previousStep: number
 }
 
 export interface BitcoinRPCConig {

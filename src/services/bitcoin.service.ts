@@ -24,6 +24,18 @@ export class BitcoinService {
     }
   }
 
+  getMultipleBlockByBlockNumber = async (from: number, to: number, logger: SyncLogger): Promise<ITx[]> => {
+    let promises: Promise<ITx[]>[] = []
+    for (let i = from; i <= to; i++) {
+      promises.push(this.getTransactionsByBlockNumber(i, logger))
+    }
+    const txs = await Promise.all(promises)
+
+    return txs.reduce((acc, cur) => {
+      return acc.concat(cur)
+    }, [])
+  }
+
   getTransactionsByBlockNumber = async (height: number, logger: SyncLogger): Promise<ITx[]> => {
     const block = await this.getBlockByBlockNumber(height, logger)
     if (!block) {
