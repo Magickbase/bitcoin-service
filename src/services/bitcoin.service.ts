@@ -15,6 +15,7 @@ export class BitcoinService {
 
   getBlockByBlockNumber = async (height: number, logger: SyncLogger): Promise<IBlock> => {
     try {
+      logger.log(`get block by block number: ${height}`)
       const blockhash = await this.#rpc.getblockhash({ height })
 
       return this.#rpc.getblock({ blockhash, verbosity: 2 })
