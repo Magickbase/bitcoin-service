@@ -6,6 +6,7 @@ import { Cell, HashType, HexString, OutPoint, Transaction } from "@ckb-lumos/lum
 import { ConsumedBitcoinOutput } from "src/type"
 import { RGBPPConfig } from "src/config/nervos.config"
 import { SyncLogger } from "src/logger/sync.logger"
+import { CellOutputService } from "./cell-output.service"
 
 @Injectable()
 export class ExplorerService {
@@ -14,7 +15,11 @@ export class ExplorerService {
   #transactionCountLimit: number
   #retryTimes = 3;
 
-  constructor(private readonly _configService: ConfigService, private readonly _nervosService: NervosService) {
+  constructor(
+    private readonly _configService: ConfigService,
+    private readonly _nervosService: NervosService,
+    private readonly _cellOutputService: CellOutputService,
+  ) {
     this.#host = this._configService.get('nervos.explorerUrl')
     this.#rgbppConfig = this._configService.get('nervos.rgbpp')
     this.#transactionCountLimit = this._configService.get('nervos.transactionLimit')
@@ -172,7 +177,7 @@ export class ExplorerService {
 
   filterUnbindCell = async (bitcoinTransactions: Map<HexString, ConsumedBitcoinOutput>, logger: SyncLogger): Promise<{ consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[]> => {
     const filtered: { consumedBy: ConsumedBitcoinOutput, outpoint: OutPoint }[] = []
-    const liveCells = await this.getTotalLiveCells(this.#rgbppConfig.codeHash, this.#rgbppConfig.hashType, logger)
+    const liveCells = await this._cellOutputService.getCellOutputsByCodeHashInBatches(Buffer.from(this.#rgbppConfig.codeHash.replace('0x', ''), 'hex'), 10000, logger)
     liveCells.forEach(cell => {
       const consumedBy = bitcoinTransactions.get(cell.cellOutput.lock.args)
       if (consumedBy) {
